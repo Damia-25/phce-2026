@@ -127,26 +127,53 @@ C++ features buy you: `#define` → `constexpr`, `enum` → `enum class`, type s
 instructions run on? What does the `arm-none-eabi` part of the compiler's name tell you?
 Why can the `.elf` file produced on your laptop not simply be executed by Windows?**
 
+**The compiler runs on your Windows/Linux PC. What CPU architecture will the produced
+instructions run on? What does the `arm-none-eabi` part of the compiler's name tell you?
+Why can the `.elf` file produced on your laptop not simply be executed by Windows?**
+
 > _Answer:_
 >
+> The produced instructions will run on an ARM processor, in this case the RP2040 on the Raspberry Pi Pico W.
+>
+> In `arm-none-eabi`, `arm` means the target architecture is ARM, `none` means that the target does not use a normal operating system, and `eabi` refers to the Embedded Application Binary Interface used for embedded systems.
+>
+> The `.elf` file cannot simply be executed by Windows because it contains machine code for the ARM microcontroller, while Windows on my PC runs x86-64 machine code and expects a different executable format and operating system environment.
 
 **Why did `enum class` require an explicit conversion where the C `enum` did not? What
 went wrong when you passed `LedState::On` to `gpio_put()` without a cast?**
 
 > _Answer:_
 >
+> A C `enum` is treated like an integer, so values such as `LED_ON` can be converted automatically to other integer-like types such as `bool`.
+>
+> In C++, `enum class` is strongly typed. `LedState::On` has the type `LedState`, not `bool`, so the compiler does not convert it automatically.
+>
+> `gpio_put()` expects a `bool`, therefore passing `LedState::On` directly caused a compile error. The problem was fixed by using an explicit conversion:
+>
+> `static_cast<bool>(LedState::On)`
+>
+> This makes the conversion intentional and preserves the type safety provided by `enum class`.
 
 **Compare the `text`, `data` and `bss` sizes of your C and C++ versions. Did the C++
 abstractions used here introduce a measurable runtime or memory cost?**
 
 > _Answer:_
 >
+> The measured sizes were:
+>
+> - C11: `text = 12432`, `data = 0`, `bss = 1184`
+> - C++17: `text = 12436`, `data = 0`, `bss = 1184`
+>
+> The C++ version used only 4 more bytes of Flash, while the RAM usage was exactly the same.
+>
+> Therefore, the C++ abstractions used here, such as `constexpr` and `enum class`, introduced practically no measurable runtime or memory cost while providing better type safety.
 
 **Attached file(s):**
 
 > _Filename:_
 >
-
+> `c_versions.c`
+> `cpp_versions.cpp`
 ---
 
 ## Exercise 2: What did the compiler generate?
@@ -199,10 +226,10 @@ levels trade size against speed, and what happens to your functions in the machi
 ### Results
 
 | Flag | `text` | `data` | `bss` | Total Flash (`text`+`data`) | Total RAM (`data`+`bss`) |
-|---|---|---|---|---|---|
-| `-O0` | | | | | |
-| `-O2` | | | | | |
-| `-Os` | | | | | |
+|---|---:|---:|---:|---:|---:|
+| `-O0` | 21568 | 0 | 1184 | 21568 | 1184 |
+| `-O2` | 11956 | 0 | 1184 | 11956 | 1184 |
+| `-Os` | 11376 | 0 | 1180 | 11376 | 1180 |
 
 ### Checklist
 
@@ -212,36 +239,49 @@ levels trade size against speed, and what happens to your functions in the machi
 - [ ] One changed source statement identified and explained
 - [ ] (bonus) `c++filt` demangled the symbol
 
-**Why is the size of the `.elf` file on disk not the same thing as the amount of Flash
-used by the program?**
+**Why is the size of the `.elf` file on disk not the same thing as the amount of Flash used by the program?**
 
 > _Answer:_
 >
+> The `.elf` file contains more than just the machine code that is stored in Flash. It can also contain debugging information, symbol tables, section information, metadata and other data used by development tools.
+>
+> The actual Flash usage is mainly represented by the `text` and `data` sections, so the file size of the `.elf` on disk is not the same as the amount of Flash used on the microcontroller.
 
-**Why was the compiler allowed to remove the entire `waste_time()` loop? Why is a
-software delay loop therefore a bad way to create timing in an embedded program, and
-why does `sleep_ms()` not disappear in the same way?**
+**Why was the compiler allowed to remove the entire `waste_time()` loop? Why is a software delay loop therefore a bad way to create timing in an embedded program, and why does `sleep_ms()` not disappear in the same way?**
 
 > _Answer:_
 >
+> The compiler was allowed to remove `waste_time()` because the loop had no observable effect. It only incremented a local variable and did not change any externally visible state, memory-mapped hardware or output.
+>
+> At `-O0`, the compiler kept the loop and it visibly slowed down the blinking. At `-O2`, the compiler detected that the loop did nothing useful and removed it completely.
+>
+> This makes an empty software delay loop unreliable for embedded timing because its duration can change or disappear depending on compiler optimization.
+>
+> `sleep_ms()` does not disappear because it performs an observable timing operation through the Pico SDK and hardware timer system, so removing it would change the behavior of the program.
 
 **What happened to `blink_once()` between `-O0` and `-O2`?**
 
 > _Answer:_
 >
+> At `-O0`, `blink_once()` existed as a separate function and `main()` called it with a branch instruction.
+>
+> At `-O2`, `blink_once()` could no longer be found as a separate function in the disassembly. The compiler inlined its code into the caller and removed the separate function because that produced more efficient code.
 
-**Why can optimized firmware contain fewer instructions even though the C++ source code
-is exactly the same?**
+**Why can optimized firmware contain fewer instructions even though the C++ source code is exactly the same?**
 
 > _Answer:_
 >
+> The compiler is allowed to transform the program as long as its observable behavior remains the same.
+>
+> With optimization enabled, it can remove unused code, eliminate unnecessary calculations, inline functions and simplify branches or loops. Therefore, the same C++ source code can produce fewer machine instructions.
 
 **What is `-Os` optimizing for, compared to `-O2`?**
 
 > _Answer:_
 >
-
----
+> `-O2` performs a broad set of optimizations mainly aimed at improving performance while keeping code growth reasonable.
+>
+> `-Os` also enables many optimizations, but it gives more priority to reducing code size. In my measurements, `-Os` produced the smallest `text` section.
 
 ## Exercise 3: Debug a temperature-controlled blinker
 
@@ -377,20 +417,25 @@ Flash vs. RAM, and what optimization does to your debugging experience.
 
 ### Checklist
 
-- [ ] `temp_blink` project created (C++, **Console over UART**)
-- [ ] All 4 TODOs filled in by hand. Program runs: temperature printed, LED blinks, finger test works
-- [ ] Debug session starts and stops at `main`
-- [ ] Breakpoint on the `printf` line hit; `raw` and `temp_c` watched while stepping
-- [ ] `&temp_c` dumped and decoded in the MEMORY pane (or skipped if behind schedule)
-- [ ] Flash run: address of `main()` in `0x1000xxxx` recorded
-- [ ] RAM run (`no_flash`): address of `main()` in `0x2000xxxx` recorded, `BUILD:` printf added, power-cycle behavior explained
-- [ ] `-O2` build debugged: at least one concrete difference noted
+- [x] `temp_blink` project created (C++, **Console over UART**)
+- [x] All 4 TODOs filled in by hand. Program runs: temperature printed, LED blinks, finger test works
+- [x] Debug session starts and stops at `main`
+- [x] Breakpoint on the `printf` line hit; `raw` and `temp_c` watched while stepping
+- [x] `&temp_c` dumped and decoded in the MEMORY pane
+- [x] Flash run: address of `main()` in `0x1000xxxx` recorded
+- [x] RAM run (`no_flash`): address of `main()` in `0x2000xxxx` recorded, `BUILD:` printf added, power-cycle behavior explained
+- [x] `-O2` build debugged: at least one concrete difference noted
 
 **What were the values of `raw` and `temp_c` before and after warming the RP2040 with
 your finger?**
 
 > _Answer:_
 >
+> Before warming the RP2040, I observed approximately `raw = 873` and `temp_c = 28.54 C`.
+>
+> After warming the chip with my finger, I observed approximately `raw = 867` and `temp_c = 31.35 C`.
+>
+> The temperature increased by a few degrees, while the raw ADC value decreased slightly.
 
 **What address did you observe for `main()` when executing from Flash, and what address
 when executing from SRAM? What do the `0x1000....` and `0x2000....` address ranges tell
@@ -398,6 +443,11 @@ you?**
 
 > _Answer:_
 >
+> When executing from Flash, I observed `main()` at address `0x10000500`.
+>
+> When executing from SRAM using the `no_flash` build, I observed `main()` at address `0x20000454`.
+>
+> The `0x1000....` address range indicates code executing from Flash through XIP, while the `0x2000....` address range corresponds to SRAM.
 
 **Power-cycle the board after the `no_flash` build. Which `BUILD:` line did the Serial
 Monitor print, and why? Why does a RAM-loaded program disappear while the Flash version
@@ -405,14 +455,27 @@ remains? (And why would you ever want to run from RAM?)**
 
 > _Answer:_
 >
+> After power-cycling the board, the `BUILD: RAM` program did not start again and no output appeared in the Serial Monitor.
+>
+> This happened because the `no_flash` build was loaded into SRAM. SRAM is volatile memory, so its contents are lost when the board loses power.
+>
+> A program stored in Flash remains after power is removed because Flash is non-volatile memory.
+>
+> Running from RAM can still be useful during development because it allows fast loading and debugging without repeatedly writing the program to Flash.
 
 **What difference did you notice when debugging the optimized (`-O2`) build compared to
 the unoptimized one?**
 
 > _Answer:_
 >
+> When debugging the `-O2` build, some local variables were no longer available in the same way as in the `-O0` build.
+>
+> In my case, `raw` was shown as `<optimized out>` in both the Local and Watch panels, while `temp_c` was still visible.
+>
+> This happens because the optimizer can keep values in registers, combine calculations, or remove variables that are not needed as separate objects. As a result, optimized code is harder to debug line by line than unoptimized code.
 
 **Attached file(s):**
 
 > _Filename:_
 >
+> `temp_blink.cpp`

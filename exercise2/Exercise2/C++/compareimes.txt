@@ -1,0 +1,17 @@
+ -O0
+target_compile_options(cpp_versions PRIVATE -O0)
+
+  text    data     bss     dec     hex filename
+  21568       0    1184   22752    58e0 build\cpp_versions.elf
+
+
+-O2
+target_compile_options(cpp_versions PRIVATE -O2)
+
+   text    data     bss     dec     hex filename
+  11956       0    1184   13140    3354 build\cpp_versions.elf
+
+target_compile_options(cpp_versions PRIVATE -Os)
+
+   text    data     bss     dec     hex filename
+  11376       0    1180   12556    310c build\cpp_versions.elf
