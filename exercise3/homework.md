@@ -95,17 +95,19 @@ both?**
 
 > _Answer:_
 >
+> In my test, one physical press produced one raw rising line and one pressed line, and releasing the button produced one raw falling line and one released line. `reading` is the current raw value directly from the GPIO pin, while `stable_state` is the debounced value that is accepted only after the reading has remained unchanged for the debounce time. Both are needed because the raw reading can contain bounce, while `stable_state` gives a reliable button state.
 
 **What happened with `DEBOUNCE_MS = 0`, and why?**
 
 > _Answer:_
 >
+> With `DEBOUNCE_MS = 0`, the debounce delay was removed, so every raw change could immediately become a new stable state. In my test the button still produced clean transitions, so I did not see multiple pressed or released events, but with a bouncing signal the program could report extra events because there is no filtering delay.
 
 **Attached file(s):**
 
 > _Filename:_
 >
-
+> `button_edges.cpp`
 ---
 
 ## Exercise 4: Mixing C and C++
@@ -181,9 +183,15 @@ about it?**
 
 > _Answer:_
 >
-
-**Attached file(s):**
+> When `extern "C"` was removed, the linker reported:
+> `undefined reference to 'led_set(unsigned int, int)'`.
+>
+> `extern "C"` tells the C++ compiler to use C linkage for the function declaration and not to apply C++ name mangling. The function `led_set()` is implemented in `gpio_driver.c`, which is compiled as C and therefore exports the plain C symbol `led_set`. Without `extern "C"`, the C++ compiler looks for a mangled C++ symbol instead, so the linker cannot find the function.
+>
+> `LedController` does not need to know about `extern "C"` because the C/C++ linkage rule applies only to the free function declaration `led_set()`. The class simply calls that function normally.
 
 > _Filename:_
 >
-
+> `c_interop.cpp`
+>
+> `gpio_driver.c`

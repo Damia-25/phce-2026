@@ -96,18 +96,18 @@ it's a good real example of "need more values -> need more bits.")
 
    | Type | Predicted | Measured |
    |---|---|---|
-   | `char` | 1 | |
-   | `int` | | |
-   | `short` | | |
-   | `long` | | |
-   | `long long` | | |
-   | `unsigned int` | | |
-   | `bool` | | |
-   | `float` | | |
-   | `double` | | |
-   | `long double` | | |
-   | `char16_t` | | |
-   | `size_t` | | |
+   | `char` | 1 | 1|
+   | `int` |2 | 4|
+   | `short` | 2|2 |
+   | `long` | 4|4 |
+   | `long long` | 8|8 |
+   | `unsigned int` | 2| 4|
+   | `bool` |1 | 1|
+   | `float` |4 | 4|
+   | `double` | 8|8 |
+   | `long double` |8 |8 |
+   | `char16_t` |2 | 2|
+   | `size_t` | 4| 4|
 
 2. Still before touching the board: a fixed-width type, `uint8_t`, from `<cstdint>`
    (already included). The name decodes literally - `u` for unsigned (no negative
@@ -126,8 +126,8 @@ it's a good real example of "need more values -> need more bits.")
 
    | | Predicted | Measured |
    |---|---|---|
-   | `uint8_t` minimum | | |
-   | `uint8_t` maximum | | |
+   | `uint8_t` minimum |0 |0 |
+   | `uint8_t` maximum |255 | 255|
 
 3. Create a new Pico project `data_types` (C++, **Console over UART**), and copy in
    [`code/data_types.cpp`](code/data_types.cpp). Recall, `stdio_init_all()` and printing
@@ -147,27 +147,27 @@ it's a good real example of "need more values -> need more bits.")
 
 ### Checklist
 
-- [ ] Sizes guessed before building
-- [ ] `print_size()` written and called for every type in Part 1's table
+- [x] Sizes guessed before building
+- [x] `print_size()` written and called for every type in Part 1's table
 - [ ] `data_types` builds, runs, and the size table is filled in
-- [ ] `uint8_t` min/max predicted before building, then checked against the output
-- [ ] Output for `number = 256` recorded
+- [x] `uint8_t` min/max predicted before building, then checked against the output
+- [x] Output for `number = 256` recorded
 
 **What was printed for `number = 256`, and why?**
 
 > _Answer:_
->
+>It printed `0`. A `uint8_t` can store values from 0 to 255. When 256 is assigned to it, the value wraps around because `uint8_t` is an 8-bit unsigned integer. Therefore, 256 becomes 0.
 
 **Why does `uint8_t` exist at all, if `int` can already hold every value it can? Give one
 situation where the exact size matters and a plain `int` would be the wrong choice.**
 
 > _Answer:_
->
+>`uint8_t` exists because it guarantees an exact size of 8 bits, while `int` only guarantees a minimum range and its actual size depends on the platform. An exact size matters when working with hardware registers. For example, if a hardware register is exactly 8 bits wide, using `uint8_t` matches the register size, while a plain `int` may be 32 bits and would be the wrong choice.
 
 **Attached file(s):**
 
 > _Filename:_
->
+>`data_types.cpp`
 
 ---
 
@@ -272,25 +272,25 @@ off to save a little power on pins that are unused or carrying an analog signal 
 6. Fill in the table below: for each SDK call, find the matching line in `gpio_hal.cpp`
    and in `gpio_registers.cpp`, and say in a few words what it does.
 
-   | SDK call | Matching line in `gpio_hal` | Matching line in `gpio_registers` | What does it do? |
-   |---|---|---|---|
-   | `gpio_init(LED_PIN)` | | | |
-   | `gpio_set_dir(BUTTON_PIN, GPIO_IN)` | | | |
-   | `gpio_pull_down(BUTTON_PIN)` | | | |
-   | `gpio_set_dir(LED_PIN, GPIO_OUT)` | | | |
-   | `gpio_get(BUTTON_PIN)` | | | |
-   | `gpio_put(LED_PIN, true)` | | | |
-   | `gpio_put(LED_PIN, false)` | | | |
+| SDK call | Matching line in `gpio_hal` | Matching line in `gpio_registers` | What does it do? |
+|---|---|---|---|
+| `gpio_init(LED_PIN)` | `io_bank0_hw->io[LED_PIN].ctrl = GPIO_FUNC_SIO;` + `sio_hw->gpio_clr = 1u << LED_PIN;` | `reg(IO_BANK0_BASE_ADDR + 0x04u + 8u * LED_PIN) = 5u;` + `reg(SIO_BASE_ADDR + 0x018u) = 1u << LED_PIN;` | Configures GPIO7 for SIO control and sets its initial output value to LOW |
+| `gpio_set_dir(BUTTON_PIN, GPIO_IN)` | `pads_bank0_hw->io[BUTTON_PIN] |= PADS_BANK0_GPIO0_IE_BITS;` | `button_pad |= 1u << 6;` | Enables the input buffer so GPIO10 can be read as an input |
+| `gpio_pull_down(BUTTON_PIN)` | `pads_bank0_hw->io[BUTTON_PIN] &= ~PADS_BANK0_GPIO0_PUE_BITS;` + `pads_bank0_hw->io[BUTTON_PIN] |= PADS_BANK0_GPIO0_PDE_BITS;` | `button_pad &= ~(1u << 3);` + `button_pad |= 1u << 2;` | Disables pull-up and enables pull-down, so the released button reads LOW |
+| `gpio_set_dir(LED_PIN, GPIO_OUT)` | `sio_hw->gpio_oe_set = 1u << LED_PIN;` | `reg(SIO_BASE_ADDR + 0x024u) = 1u << LED_PIN;` | Enables GPIO7 as an output |
+| `gpio_get(BUTTON_PIN)` | `sio_hw->gpio_in & (1u << BUTTON_PIN)` | `reg(SIO_BASE_ADDR + 0x004u) & (1u << BUTTON_PIN)` | Reads the current state of GPIO10 |
+| `gpio_put(LED_PIN, true)` | `sio_hw->gpio_set = 1u << LED_PIN;` | `reg(SIO_BASE_ADDR + 0x014u) = 1u << LED_PIN;` | Sets GPIO7 HIGH and turns the LED on |
+| `gpio_put(LED_PIN, false)` | `sio_hw->gpio_clr = 1u << LED_PIN;` | `reg(SIO_BASE_ADDR + 0x018u) = 1u << LED_PIN;` | Sets GPIO7 LOW and turns the LED off |
 7. Compare the compiled size of all three projects:
    `arm-none-eabi-size build/<project_name>.elf` (run from each project's folder, or use
    the memory usage summary already printed at the end of a normal build). Fill in the
    `text` size (the actual code, in bytes) for each.
 
-   | Project | `text` size (bytes) |
-   |---|---|
-   | `gpio_sdk` | |
-   | `gpio_hal` | |
-   | `gpio_registers` | |
+| Project | `text` size (bytes) |
+|---|---|
+| `gpio_sdk` | 10676 |
+| `gpio_hal` | 10604 |
+| `gpio_registers` | 10644 |
 
 ### Checklist
 
@@ -304,30 +304,34 @@ off to save a little power on pins that are unused or carrying an analog signal 
 
 > _Answer:_
 >
+> With a pull-down resistor, the button reads LOW when released and HIGH when pressed. With a pull-up resistor, the logic would be reversed: the button would read HIGH when released and LOW when pressed, if the button were wired to ground.
 
-**Did the three projects' compiled sizes actually match how different the source code
-looks, or were they closer/further apart than you expected? Why might that be?**
-
-> _Answer:_
->
-
-**When would you reach for direct register access instead of the SDK, and when is the
-SDK clearly the better choice? Where would the HAL level (`gpio_hal.cpp`) fit in?**
+**Did the three projects' compiled sizes actually match how different the source code looks, or were they closer/further apart than you expected? Why might that be?**
 
 > _Answer:_
 >
+> The compiled sizes were very close even though the source code looked quite different. `gpio_sdk` was 10676 bytes, `gpio_hal` was 10604 bytes, and `gpio_registers` was 10644 bytes. The maximum difference was only 72 bytes. This is because the compiler can inline and optimize many SDK functions, so the higher-level SDK code can compile into almost the same low-level instructions as the HAL or direct-register code.
 
-**`gpio_registers.cpp`/`gpio_hal.cpp` clear the `PUE` bit and set the `PDE` bit for the
-button pin (pull-down). What third combination of those two bits is possible, and what
-would it mean electrically for a button input if neither pull-up nor pull-down were
-enabled?**
+**When would you reach for direct register access instead of the SDK, and when is the SDK clearly the better choice? Where would the HAL level (`gpio_hal.cpp`) fit in?**
 
 > _Answer:_
 >
+> Direct register access is useful when very precise control of the hardware is required, when using a hardware feature not provided by the SDK, or when writing very low-level code. The SDK is usually the better choice because it is easier to read, maintain, and use correctly. The HAL level is in between: it gives more direct control of the hardware through named register structures without requiring raw memory addresses and magic numbers.
+
+**`gpio_registers.cpp`/`gpio_hal.cpp` clear the `PUE` bit and set the `PDE` bit for the button pin (pull-down). What third combination of those two bits is possible, and what would it mean electrically for a button input if neither pull-up nor pull-down were enabled?**
+
+> _Answer:_
+>
+> A third configuration is `PUE = 0` and `PDE = 0`, which means that neither the pull-up nor the pull-down resistor is enabled. When the button is released, the input would then be floating because it is not connected to a defined voltage. Electrical noise could make it randomly read HIGH or LOW.
 
 **Attached file(s):**
 
 > _Filename:_
 >
+> `gpio_sdk.cpp`
+>
+> `gpio_hal.cpp`
+>
+> `gpio_registers.cpp`
 
 Exercises 3 and 4 continue in [`homework.md`](homework.md).
