@@ -10,5 +10,6 @@
 
   // exercise*/ snippets aren't real projects, so cpptools can't resolve their includes.
   "C_Cpp.files.exclude": { "**/exercise*/**": true },
-  "C_Cpp.errorSquiggles": "Disabled"
+  "C_Cpp.errorSquiggles": "Disabled",
+  "cmake.sourceDirectory": "C:/Users/danii/Desktop/SDU/3SEMESTER/Programming for Hardware Constrained Environments/phce-2026/exercise2/Exercise3/temp_blink"
 }
