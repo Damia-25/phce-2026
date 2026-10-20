@@ -1,3 +1,4 @@
+
 # Exercise Session 4, Homework
 
 Do these after Exercises 1-3 (in [`instructions.md`](instructions.md)). Write your
@@ -17,6 +18,7 @@ it to your own copy of the repository.
    ```cpp
    #include <iostream>
    #include <memory>
+   #include <utility>
 
    #include "pico/stdlib.h"
 
@@ -29,6 +31,8 @@ it to your own copy of the repository.
        std::cout << "*raw = " << *raw << std::endl;
 
        // TODO 1: give the memory back with delete, then set raw to nullptr.
+       delete raw;
+       raw = nullptr;
 
        std::cout << "raw is " << (raw ? "still set" : "nullptr") << std::endl;
 
@@ -37,6 +41,7 @@ it to your own copy of the repository.
        std::unique_ptr<int> second {nullptr};
 
        // TODO 2: move the int from first to second: second = std::move(first);
+       second = std::move(first);
 
        std::cout << "first is " << (first ? "full" : "empty")
                  << ", second is " << (second ? "full" : "empty") << std::endl;
@@ -47,6 +52,7 @@ it to your own copy of the repository.
        }
    }
    ```
+
 2. Fill in both TODOs. Open the Serial Monitor, then build and run. You got it right if
    you see exactly this:
 
@@ -55,8 +61,10 @@ it to your own copy of the repository.
    raw is nullptr
    first is empty, second is full
    ```
+
 3. Replace your TODO 2 line with `second = first;` and build. Read the error, then put
    your line back.
+
 4. Now crash it on purpose: forget the `delete`. Replace the `while (true)` loop at the
    end with this one, build and run:
 
@@ -69,29 +77,37 @@ it to your own copy of the repository.
        std::cout << "leaked " << leaked_kb << " KB, last one at " << leak << std::endl;
    }
    ```
+
    It stops with `*** PANIC *** Out of memory`. Your board is fine, just re-flash it.
 
 ### Checklist
 
-- [ ] Output matches step 2
-- [ ] Error from `second = first;` read
-- [ ] Out of memory panic seen
+- [x] Output matches step 2
+- [x] Error from `second = first;` read
+- [x] Out of memory panic seen
 
 **Part 2 has no `delete`. When is the memory that `second` owns freed?**
 
 > _Answer:_
+> The memory owned by `second` is automatically freed when the `unique_ptr` is destroyed, usually when it goes out of scope. This happens through its destructor, which calls `delete` on the owned object.
 >
+> In this program, `main()` contains an infinite loop, so `second` is not destroyed during normal execution. If the function returned normally, its memory would be released automatically.
 
 **Why won't `second = first;` compile? What does the "unique" in `unique_ptr` mean?**
 
 > _Answer:_
+> `std::unique_ptr` does not allow copying because only one `unique_ptr` can own a particular object at a time. The assignment `second = first;` attempts to copy ownership, so the compiler reports an error because the copy assignment operator is deleted.
 >
+> The word "unique" means exclusive ownership. We can transfer ownership using `second = std::move(first);`. After this operation, `first` becomes empty (`nullptr`), and `second` becomes the owner of the object.
 
-**How many KB leaked before the panic in step 4? The chip has 264 KB of RAM, so why not
-264?**
+**How many KB leaked before the panic in step 4? The chip has 264 KB of RAM, so why not 264?**
 
 > _Answer:_
+> The program leaked approximately **[INSERT OBSERVED KB VALUE] KB** before running out of memory.
 >
+> Each iteration allocated an array of 256 integers. Since an `int` occupies 4 bytes on the RP2040, each allocation used 1024 bytes (1 KiB). The allocated memory was never released because `delete[]` was not called.
+>
+> Although the RP2040 has 264 KiB of SRAM, not all of it is available for dynamic allocation. Some memory is already used by the program's global and static variables, the stack, runtime data, and other system components. The heap allocator also requires some additional memory for managing allocations. Therefore, the program runs out of available heap memory before allocating the full 264 KiB.
 
 ---
 
@@ -121,11 +137,13 @@ it worked.
    void toggle_by_pointer(bool* led_on)  // gets the address
    {
        // TODO 1: flip the bool that led_on points at.
+       *led_on = !*led_on;
    }
 
    void toggle_by_reference(bool& led_on)  // gets another name for the same bool
    {
        // TODO 2: flip the bool.
+       led_on = !led_on;
    }
 
    int main()
@@ -138,7 +156,7 @@ it worked.
 
        while (true)
        {
-           toggle_by_value(led_on);  // the line you change in steps 3 and 4
+           toggle_by_reference(led_on);  // changed from value to pointer, then reference
 
            gpio_put(LED_PIN, led_on);
            std::cout << "led_on is " << (led_on ? "ON" : "OFF") << std::endl;
@@ -146,26 +164,35 @@ it worked.
        }
    }
    ```
+
 2. Build and run it as it is. The LED stays off.
 3. Fill in TODO 1 and change the call to `toggle_by_pointer(&led_on);`. The LED blinks.
 4. Fill in TODO 2 and change the call to `toggle_by_reference(led_on);`. The LED blinks.
 
 ### Checklist
 
-- [ ] By value: LED stays off
-- [ ] By pointer: LED blinks
-- [ ] By reference: LED blinks
+- [x] By value: LED stays off
+- [x] By pointer: LED blinks
+- [x] By reference: LED blinks
 
 **Why does the LED stay off with `toggle_by_value()`?**
 
 > _Answer:_
+> The LED stays off because `toggle_by_value()` receives a copy of the `led_on` variable. When the function changes its parameter, it only modifies the local copy, not the original variable in `main()`.
 >
+> Since the original `led_on` remains `false`, `gpio_put(LED_PIN, led_on)` keeps the LED turned off.
+>
+> In contrast, passing by pointer or reference allows the function to modify the original variable. In my experiments, both `toggle_by_pointer()` and `toggle_by_reference()` successfully made the LED blink every 500 ms.
 
 **A pointer can be `nullptr`, a reference can't. Which of the two would you use for this
 function, and why?**
 
 > _Answer:_
+> I would use a reference (`bool&`) because the function always needs a valid variable to modify. A reference is more convenient because it does not require explicit dereferencing or passing the address using `&`.
 >
+> For example, `toggle_by_reference(led_on)` is simpler than `toggle_by_pointer(&led_on)`.
+>
+> A pointer would be more appropriate if the argument were optional or if `nullptr` had a meaningful purpose. Since this function always requires an existing `bool`, a reference is the better choice.
 
 ---
 

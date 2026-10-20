@@ -40,37 +40,37 @@ change the same way.
 
 | Knob | `raw` | volts | ohms |
 |---|---|---|---|
-| fully left | | | |
-| middle | | | |
-| fully right | | | |
+| fully left | 13 | 0.01048 V | 31.75 Ω |
+| middle | 2091 | 1.68506 V | 5106.23 Ω |
+| fully right | 4095 | 3.30000 V | 10000 Ω |
 
-`raw` jumps by about ___ steps with the knob still. The 9-bit value jumps by ___.
+`raw` jumps by about **35 steps with the knob still. The 9-bit value jumps by about 4**.
 
 ### Checklist
 
-- [ ] TODO 1 and 2 filled in
-- [ ] Table filled in
-- [ ] Jumps noted, 12-bit and 9-bit
+- [x] TODO 1 and 2 filled in
+- [x] Table filled in
+- [x] Jumps noted, 12-bit and 9-bit
 
 **How many millivolts is one 12-bit step?**
 
-> _Answer:_
->
+> _Answer:_  
+> One step is about **0.806 mV**, because 3.3 V / 4095 ≈ 0.000806 V.
 
 **The knob was still. Why did `raw` move?**
 
-> _Answer:_
->
+> _Answer:_  
+> The analog signal contains small amounts of electrical noise, and the ADC also has limited accuracy. Because of this, the measured voltage changes slightly even when the potentiometer is not moving, so the `raw` value changes by a few counts.
 
 **Did the 9-bit value jump less? Why?**
 
-> _Answer:_
->
+> _Answer:_  
+> Yes. The 9-bit value jumped less because `raw >> 3` removes the three lowest bits. These least significant bits contain the smallest changes and much of the visible noise, so the result is more stable but has lower resolution.
 
 **Attached file(s):**
 
-> _Filename:_
->
+> _Filename:_  
+> `pot_adc.cpp`
 
 *Read more (optional): Programming Embedded Systems, Sect. 13.1.4.1 ("Analog circuits"):
 analog vs. digital, a knob on a variable resistor, and why analog signals are noisy.
@@ -106,37 +106,38 @@ number.
 
 | Normal light | Covered | Your threshold |
 |---|---|---|
-| | | |
+| 75 | 340 | 208 |
 
 ### Checklist
 
-- [ ] TODO 1 filled in; the LED turns on in the dark
-- [ ] Threshold set from your own numbers
-- [ ] LED checked with `raw` near the threshold
-- [ ] TODO 2 filled in; the RGB LED glows blue when dark
-- [ ] TODO 3 filled in; the colours change when dark
+- [x] TODO 1 filled in; the LED turns on in the dark
+- [x] Threshold set from your own numbers
+- [x] LED checked with `raw` near the threshold
+- [x] TODO 2 filled in; the RGB LED glows blue when dark
+- [x] TODO 3 filled in; the colours change when dark
 
 **Why two thresholds? What would `is_dark = raw > DARK_THRESHOLD;` do in step 5?**
 
-> _Answer:_
->
+> _Answer:_  
+> Two thresholds create hysteresis. This prevents the LED from switching on and off repeatedly when the `raw` value fluctuates near the threshold. With only `is_dark = raw > DARK_THRESHOLD;`, small ADC noise around the threshold could make the LED flicker.
 
 **Between the two thresholds, what does the LED do?**
 
-> _Answer:_
->
+> _Answer:_  
+> The LED keeps its previous state. If it was on, it stays on. If it was off, it stays off.
 
 **The ADC has several inputs. Which line picks the sensor's?**
 
-> _Answer:_
->
+> _Answer:_  
+> `adc_select_input(LIGHT_ADC_INPUT);`
 
 **Attached file(s):**
 
-> _Filename:_
->
+> _Filename:_  
+> `light_led.cpp`
 
 ---
+
 
 ## Exercise 3: Macros vs. `constexpr`
 
@@ -176,47 +177,68 @@ Use `constexpr` for constants instead.
 
 ### Checklist
 
-- [ ] TODO 1 and 2 filled in; `double_value(3 + 4)` prints 14
-- [ ] TODO 3 filled in; the GP7 LED works
-- [ ] Plain `if` error read (step 8)
+- [x] TODO 1 and 2 filled in; `double_value(3 + 4)` prints 14
+- [x] TODO 3 filled in; the GP7 LED works
+- [x] Plain `if` error read (step 8)
 - [ ] `EXERCISE` set to 2, 3 and deleted
-- [ ] `DEBUG_MODE` turned off
+- [x] `DEBUG_MODE` turned off
 
 **What did `DOUBLE(3 + 4)` print? Write the text the preprocessor made.**
 
 > _Answer:_
->
+> It printed 11 instead of 14. The preprocessor replaced `DOUBLE(3 + 4)` with
+> `3 + 4 * 2`. Since multiplication has higher precedence than addition,
+> the result is `3 + 8 = 11`.
 
 **Why does `double_value(3 + 4)` give 14?**
 
 > _Answer:_
->
+> Because `double_value()` is a real C++ function. The argument `3 + 4`
+> is evaluated first, giving 7. The function then multiplies 7 by 2,
+> returning 14. Unlike a macro, it does not use text substitution.
 
 **Say you had kept `#define LED_PIN 7`. What would `int LED_PIN {5};` inside a function
 turn into? Why is that a problem?**
 
 > _Answer:_
->
+> The preprocessor would replace `LED_PIN` with `7`, producing `int 7 {5};`.
+> This is invalid C++ because a number cannot be used as a variable name.
+> Macros have no C++ scope and can replace identifiers unexpectedly,
+> causing compilation errors.
 
 **What was the error in step 8? Why does `#if` avoid it?**
 
 > _Answer:_
->
+> The compiler reported `'cyw43_arch_gpio_put' was not declared in this scope`.
+> A normal `if` requires both branches to contain valid C++ code, even when
+> the condition is false. Since `USE_BUILTIN_LED` was 0, the required header
+> was not included. The `#if` directive avoids this error by removing the
+> unused branch before compilation.
 
 **You deleted `#define EXERCISE`. Which error came first? Why?**
 
 > _Answer:_
->
+> The expected first error is `#error "EXERCISE must be 1 or 2"`.
+> When `EXERCISE` is undefined, the preprocessor treats it as 0 in `#if`
+> conditions. Neither `EXERCISE == 1` nor `EXERCISE == 2` is true,
+> so the `#else` branch containing `#error` is selected.
+> Additional errors occur because the sensor constants are not declared
+> and `EXERCISE` is also used in normal C++ code.
 
 **`DEBUG_MODE` is off. Where did the printing code go?**
 
 > _Answer:_
->
+> When `DEBUG_MODE` is not defined, the preprocessor selects the empty
+> definition of `DEBUG_LOG(text, value)`. All calls to `DEBUG_LOG` are
+> replaced with nothing before compilation. Therefore, the debug printing
+> code is not included in the compiled program, saving memory and
+> execution time.
 
 **Attached file(s):**
 
 > _Filename:_
->
+> `macros.cpp`
+
 
 *Read more (optional): Beginning C++17, Chapter 10 ("Defining Preprocessor Macros",
 "Logical Preprocessing Directives"). Real-Time C++, Sect. 1.11 ("Compile-Time Constant")

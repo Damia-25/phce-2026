@@ -1,3 +1,4 @@
+
 # Exercise Session 5, Homework
 
 Do these after Exercises 1-3, in [`instructions.md`](instructions.md). Write answers in the
@@ -62,6 +63,7 @@ same.
        }
    }
    ```
+
 2. Fill in TODO 1. Copy the body of `swap_by_value()`. Put `*` before every `a` and `b`.
 3. Fill in TODO 2. Copy the body of `swap_by_value()`. Change nothing.
 4. Open the Serial Monitor. Then build and run. Fill in the table.
@@ -69,29 +71,34 @@ same.
 | Line | `x` | `y` |
 |---|---|---|
 | start | 1 | 2 |
-| by value | | |
-| by pointer | | |
-| by reference | | |
+| by value | 1 | 2 |
+| by pointer | 2 | 1 |
+| by reference | 1 | 2 |
 
 ### Checklist
 
-- [ ] TODO 1 and 2 filled in
-- [ ] Table filled in
+- [x] TODO 1 and 2 filled in
+- [x] Table filled in
 
 **Why did `swap_by_value()` not swap?**
 
 > _Answer:_
->
+> The function receives copies of the original variables x and y.
+> It swaps only these local copies, so the original variables in main()
+> remain unchanged. After the function returns, x is still 1 and y is still 2.
 
 **The last line shows `x = 1` again. Why?**
 
 > _Answer:_
->
+> First, swap_by_pointer() changes the original variables, making
+> x = 2 and y = 1. Then swap_by_reference() swaps them again using
+> references to the same original variables. As a result, their
+> original values are restored: x = 1 and y = 2.
 
 **Attached file(s):**
 
 > _Filename:_
->
+> `swap.cpp`
 
 ---
 
@@ -146,6 +153,7 @@ when to stop.
        }
    }
    ```
+
 2. Open the Serial Monitor. Then build and run. Read `countdown()` and its output. Why do
    the `back in` lines count up?
 3. Fill in TODO 1 and 2. You should see `sum_to(10) = 55`.
@@ -156,24 +164,38 @@ when to stop.
 
 ### Checklist
 
-- [ ] `sum_to(10) = 55`
-- [ ] `factorial(5) = 120`
+- [x] `sum_to(10) = 55`
+- [x] `factorial(5) = 120`
 - [ ] Step 6 tried, then fixed
 
 **What does the base case in `sum_to()` do?**
 
 > _Answer:_
->
+> The base case stops the recursion when n reaches 0 by returning 0.
+> It prevents the function from calling itself forever and allows
+> previous recursive calls to finish and return their results.
+> Without the base case, the recursion would continue and could
+> eventually cause a stack overflow.
 
 **What happened in step 6? Why?**
 
 > _Answer:_
+> After removing the base case from countdown(), the function did
+> not stop at 0. It continued printing negative numbers, reaching
+> approximately -3138 in the Serial Monitor.
 >
+> This happened because the function kept calling countdown(n - 1)
+> without a stopping condition. Every recursive call uses additional
+> stack memory. Eventually, this can cause a stack overflow,
+> memory corruption or a program crash.
+>
+> The experiment demonstrates why recursive functions need
+> a base case to stop correctly.
 
 **Attached file(s):**
 
 > _Filename:_
->
+> `recursion.cpp`
 
 ---
 
